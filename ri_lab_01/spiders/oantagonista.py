@@ -17,7 +17,7 @@ class OantagonistaSpider(scrapy.Spider):
     def __init__(self, *a, **kw):
         super(OantagonistaSpider, self).__init__(*a, **kw)
         with open('./seeds/oantagonista.json') as json_file:
-                data = json.load(json_file)
+            data = json.load(json_file)
         self.start_urls = list(data.values())
 
     def parse(self, response):
@@ -27,65 +27,48 @@ class OantagonistaSpider(scrapy.Spider):
         doc_articles = response.css('article')
 
         for href in doc_articles.css('a.article_link::attr(href)'):
-            yield response.follow(href, callback=self.__get_articles_data)
+            yield response.follow(href, callback=self.__extract_data)
 
-        next_page = "https://www.oantagonista.com/pagina/%d/" % (self.current_page_number)
+        next_page = "https://www.oantagonista.com/pagina/%d/" % (
+            self.current_page_number)
         self.current_page_number += 1
-            
-        yield response.follow(next_page, callback=self.parse) 
-           
+
+        yield response.follow(next_page, callback=self.parse)
+
     """
     Get the desired data from the articles.
     """
-    def __get_articles_data(self, response):
+    def __extract_data(self, response):
         yield {
-            'title': self.__get_title(response),
-            'sub_title': None, #there are no subtitles on 'oantagonista'
-            'author': self.__get_author(response), 
+            'title': response.css('h1.entry-title::text').get(),
+            'sub_title': None,  # there is no subtitle information on 'oantagonista'
+            'author': self.__get_author(response),
             'date': self.__get_date(response),
-            'section': self.__get_section(response), 
+            'section': response.xpath('//span[@class="categoria"]/a/text()').get(),
             'text': self.__get_text(response),
-            'url': self.__get_url(response),
+            'url': response.request.url,
         }
-   
-    """
-    Get for the article's title.
-    """
-    def __get_title(self, response):
-        return response.css('h1.entry-title::text').get()
-    
+
     """
     Get for the article's author. Most of the articles on 'oantagonista' don't have 
     a author, in those cases, this informatition will be replaced with None.
     """
     def __get_author(self, response):
-        author = response.css('header.entry-header div::text').get().replace('Por ','')
+        author = response.css('header.entry-header div::text').get()[4:]
         return author if author.strip() else None
-    
+
     """
     Get the article's date in dd/mm/yyyy hh:mi:ss format.
     """
     def __get_date(self, response):
         return self.__format_date(response.css('time.entry-date::attr(datetime)').get())
-    
-    """
-    Get for the article's section.
-    """
-    def __get_section(self, response):
-        return response.xpath('//span[@class="categoria"]/a/text()').get()
-    
+
     """
     Get for ther article's text.
     """
     def __get_text(self, response):
         return "".join(response.css('div.entry-content p::text').getall())
-    
-    """
-    Get for the article's url.
-    """
-    def __get_url(self, response):
-        return response.request.url
-    
+
     """
     Formats the date from Y-m-d H:M:S to d/m/Y H:M:S.
     """
