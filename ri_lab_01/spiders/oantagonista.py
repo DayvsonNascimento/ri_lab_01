@@ -36,7 +36,7 @@ class OantagonistaSpider(scrapy.Spider):
         yield response.follow(next_page, callback=self.parse)
 
     """
-    Get the desired data from the articles.
+    Extract data from the articles.
     """
     def __extract_data(self, response):
         yield {
